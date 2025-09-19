@@ -2028,51 +2028,25 @@
             }
         ];
 
-        // Generate wrong answers for multiple choice
-        function generateWrongAnswers(correctTerm) {
-            const wrongAnswers = [];
-            const shuffledVocab = [...vocabularyDatabase].sort(() => Math.random() - 0.5);
-            
-            for (let item of shuffledVocab) {
-                if (item.term !== correctTerm && wrongAnswers.length < 3) {
-                    wrongAnswers.push(item.definition);
-                }
-            }
-            return wrongAnswers;
-        }
 
-        // Generate a random quiz question
+        // Generate a random quiz question (text input only)
         function generateQuizQuestion(questionNum) {
-            const vocabItem = vocabularyDatabase[Math.floor(Math.random() * vocabularyDatabase.length)];
-            const questionType = Math.random() < 0.5 ? 'multiple-choice' : 'fill-blank';
+            // Filter vocabulary to only include single words (no spaces or hyphens)
+            const singleWordVocab = vocabularyDatabase.filter(item => 
+                !item.term.includes(' ') && !item.term.includes('-')
+            );
             
-            if (questionType === 'multiple-choice') {
-                // Multiple choice: What does [term] mean?
-                const wrongAnswers = generateWrongAnswers(vocabItem.term);
-                const allAnswers = [vocabItem.definition, ...wrongAnswers];
-                const shuffledAnswers = allAnswers.sort(() => Math.random() - 0.5);
-                const correctIndex = shuffledAnswers.indexOf(vocabItem.definition);
-                
-                return {
-                    type: 'multiple-choice',
-                    question: `What does "${vocabItem.term}" mean?`,
-                    answers: shuffledAnswers,
-                    correctAnswer: correctIndex,
-                    correctTerm: vocabItem.term
-                };
-            } else {
-                // Fill in the blank
-                const sentence = vocabItem.sentences[Math.floor(Math.random() * vocabItem.sentences.length)];
-                const hint = vocabItem.term.toLowerCase().substring(0, 3) + '...';
-                
-                return {
-                    type: 'fill-blank',
-                    question: `Complete the sentence: "${sentence}"`,
-                    correctAnswer: vocabItem.term.toLowerCase(),
-                    hint: hint,
-                    correctTerm: vocabItem.term
-                };
-            }
+            const vocabItem = singleWordVocab[Math.floor(Math.random() * singleWordVocab.length)];
+            const sentence = vocabItem.sentences[Math.floor(Math.random() * vocabItem.sentences.length)];
+            const hint = vocabItem.term.toLowerCase().substring(0, Math.min(3, vocabItem.term.length)) + '...';
+            
+            return {
+                type: 'fill-blank',
+                question: `Complete the sentence: "${sentence}"`,
+                correctAnswer: vocabItem.term.toLowerCase(),
+                hint: hint,
+                correctTerm: vocabItem.term
+            };
         }
 
         // Initialize new quiz system
@@ -2093,7 +2067,7 @@
             updateQuizProgress();
         }
 
-        // Generate HTML for quiz questions
+        // Generate HTML for quiz questions (text input only)
         function generateQuizHTML() {
             const container = document.getElementById('quiz-questions-container');
             container.innerHTML = '';
@@ -2105,48 +2079,21 @@
                 questionDiv.id = `quiz-question-${questionNum}`;
                 if (questionNum === 1) questionDiv.classList.add('active');
                 
-                if (q.type === 'multiple-choice') {
-                    questionDiv.innerHTML = `
-                        <div class="quiz-question">
-                            <h3>${q.question}</h3>
-                            <div class="multiple-choice">
-                                ${q.answers.map((answer, idx) => `
-                                    <div class="choice" onclick="selectQuizChoice(this, ${idx}, ${questionNum})">
-                                        <input type="radio" name="quiz_q${questionNum}" value="${idx}">
-                                        ${answer}
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <button class="check-button" onclick="checkQuizAnswer(${questionNum})">Check Answer</button>
-                            <div class="feedback" id="quiz-feedback-${questionNum}" style="display: none;"></div>
-                        </div>
-                    `;
-                } else {
-                    questionDiv.innerHTML = `
-                        <div class="quiz-question">
-                            <h3>${q.question}</h3>
-                            <input type="text" class="quiz-input" id="quiz-answer-${questionNum}" placeholder="${q.hint}">
-                            <button class="check-button" onclick="checkQuizAnswer(${questionNum})">Check Answer</button>
-                            <div class="feedback" id="quiz-feedback-${questionNum}" style="display: none;"></div>
-                        </div>
-                    `;
-                }
+                questionDiv.innerHTML = `
+                    <div class="quiz-question">
+                        <h3>${q.question}</h3>
+                        <input type="text" class="quiz-input" id="quiz-answer-${questionNum}" placeholder="${q.hint}">
+                        <button class="check-button" onclick="checkQuizAnswer(${questionNum})">Check Answer</button>
+                        <div class="feedback" id="quiz-feedback-${questionNum}" style="display: none;"></div>
+                    </div>
+                `;
                 
                 container.appendChild(questionDiv);
             });
         }
 
-        // Select choice in multiple choice question
-        function selectQuizChoice(element, choiceIndex, questionNum) {
-            const choices = element.parentNode.querySelectorAll('.choice');
-            choices.forEach(choice => choice.classList.remove('selected'));
-            element.classList.add('selected');
-            
-            const radioInput = element.querySelector('input[type="radio"]');
-            if (radioInput) radioInput.checked = true;
-        }
 
-        // Check quiz answer
+        // Check quiz answer (text input only)
         function checkQuizAnswer(questionNum) {
             const question = quizQuestions[questionNum - 1];
             const feedback = document.getElementById(`quiz-feedback-${questionNum}`);
@@ -2154,40 +2101,18 @@
             
             let isCorrect = false;
             
-            if (question.type === 'multiple-choice') {
-                const selectedChoice = document.querySelector(`input[name="quiz_q${questionNum}"]:checked`);
-                if (!selectedChoice) {
-                    alert('Please select an answer first!');
-                    return;
-                }
-                
-                const selectedIndex = parseInt(selectedChoice.value);
-                isCorrect = selectedIndex === question.correctAnswer;
-                
-                // Mark answers visually
-                const choices = document.querySelectorAll(`#quiz-question-${questionNum} .choice`);
-                choices.forEach((choice, index) => {
-                    if (index === question.correctAnswer) {
-                        choice.classList.add('correct');
-                    } else if (index === selectedIndex && !isCorrect) {
-                        choice.classList.add('incorrect');
-                    }
-                });
-                
-            } else {
-                const userInput = document.getElementById(`quiz-answer-${questionNum}`);
-                const userAnswer = userInput.value.trim().toLowerCase();
-                
-                if (!userAnswer) {
-                    alert('Please enter an answer first!');
-                    return;
-                }
-                
-                isCorrect = userAnswer === question.correctAnswer || 
-                           userAnswer === question.correctAnswer.replace(/[-\s]/g, '');
-                
-                userInput.classList.add(isCorrect ? 'correct' : 'incorrect');
+            // Text input validation
+            const userInput = document.getElementById(`quiz-answer-${questionNum}`);
+            const userAnswer = userInput.value.trim().toLowerCase();
+            
+            if (!userAnswer) {
+                alert('Please enter an answer first!');
+                return;
             }
+            
+            isCorrect = userAnswer === question.correctAnswer;
+            
+            userInput.classList.add(isCorrect ? 'correct' : 'incorrect');
             
             // Show feedback
             feedback.style.display = 'block';
